@@ -1,0 +1,47 @@
+FROM python:3.12-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installer Poetry + le plugin export
+RUN pip install --no-cache-dir poetry poetry-plugin-export
+
+# Copier la config du projet (dépendances)
+COPY pyproject.toml ./
+# COPY poetry.lock ./   # si tu l’as un jour
+
+# Exporter les dépendances gérées par Poetry en requirements.txt
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+# Installer les dépendances dans /install
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# Copier ton code
+COPY app ./app
+
+# ---------- Stage 2 : Final minimal image ----------
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Copier les libs Python depuis le builder
+COPY --from=builder /install /usr/local
+
+# Copier uniquement le code (sans tout le contexte de build)
+COPY --from=builder /app /app
+
+# User non-root
+RUN useradd --system --create-home --uid 1001 appuser
+USER appuser
+
+CMD ["python", "app/main.py"]
+

@@ -108,3 +108,13 @@ gradlew.bat
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+
+target/
+.mvn/
+mvnw
+mvnw.cmd
+*.log
+.idea/
+*.iml
+*.class
